@@ -1,9 +1,9 @@
 "use strict";
 
 const mongoose = require("mongoose");
-var Schema = mongoose.Schema;
+let Schema = mongoose.Schema;
 
-var ReplySchema = new Schema({
+let ReplySchema = new Schema({
   text: {
     type: String,
     max: 200,

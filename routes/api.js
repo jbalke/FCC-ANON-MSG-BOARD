@@ -22,10 +22,10 @@ module.exports = function(app) {
 
   app
     .route("/api/replies/:board")
-    .get()
+    .get(replyController.reply_get)
     .post(replyController.reply_post)
-    .put()
-    .delete();
+    .put(replyController.reply_put)
+    .delete(replyController.reply_delete);
 
   //404 Not Found Middleware
   app.use(function(req, res, next) {

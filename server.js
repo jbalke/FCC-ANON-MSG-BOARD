@@ -1,19 +1,19 @@
 "use strict";
 
-var express = require("express");
-var bodyParser = require("body-parser");
-var expect = require("chai").expect;
-var cors = require("cors");
-var helmet = require("helmet");
-var mongoose = require("mongoose");
+const express = require("express");
+const bodyParser = require("body-parser");
+const expect = require("chai").expect;
+const cors = require("cors");
+const helmet = require("helmet");
+const mongoose = require("mongoose");
 
-var apiRoutes = require("./routes/api.js");
-var fccTestingRoutes = require("./routes/fcctesting.js");
-var runner = require("./test-runner");
+const apiRoutes = require("./routes/api.js");
+const fccTestingRoutes = require("./routes/fcctesting.js");
+const runner = require("./test-runner");
 
 require("dotenv").config();
 
-var app = express();
+const app = express();
 
 app.use(
   helmet({
@@ -29,8 +29,10 @@ app.use(cors({ origin: "*" })); //For FCC testing purposes only
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+mongoose.set("useCreateIndex", true);
+
 mongoose.connect(process.env.DB, { useNewUrlParser: true, autoIndex: true });
-var db = mongoose.connection;
+const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 db.once("open", console.log.bind(console, "database connected"));
 
@@ -67,7 +69,7 @@ app.use(function(err, req, res, next) {
 //Sample Front-end
 
 //Start our server and tests!
-var port = process.env.PORT || 3000;
+let port = process.env.PORT || 3000;
 app.listen(port, function() {
   console.log("Listening on port " + port);
   if (process.env.NODE_ENV === "test") {
@@ -76,7 +78,7 @@ app.listen(port, function() {
       try {
         runner.run();
       } catch (e) {
-        var error = e;
+        let error = e;
         console.log("Tests are not valid:");
         console.log(error);
       }

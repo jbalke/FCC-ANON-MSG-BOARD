@@ -1,33 +1,28 @@
 "use strict";
 
 const Thread = require("../models/thread");
+const Reply = require("../models/reply");
 const { body, validationResult } = require("express-validator/check");
 const { sanitizeBody } = require("express-validator/filter");
 
 exports.thread_post = async function(req, res) {
-  var { text, delete_password } = req.body;
-  var { board } = req.params;
-  var boardView = `/b/${board}`;
+  let { text, delete_password } = req.body;
+  let { board } = req.params;
+  let boardView = `/b/${board}`;
 
-  var newThread = new Thread({ text, delete_password, board });
+  let newThread = new Thread({ text, delete_password, board });
 
-  var doc = await newThread.save();
+  let doc = await newThread.save();
   res.redirect(boardView);
   console.log("thread saved:", doc);
 };
 
 //ToDo: Limit replies to top 3 by created_on
 exports.thread_get = async function(req, res) {
-  var { board } = req.params;
+  let { board } = req.params;
 
   try {
-    // var result = await Thread.find({ board })
-    //   .sort({ bumped_on: -1 })
-    //   .limit(10)
-    //   .populate("replies")
-    //   .select({ reported: 0, delete_password: 0 });
-
-    var result = await Thread.aggregate([
+    let result = await Thread.aggregate([
       { $match: { board } },
       { $sort: { bumped_on: -1 } },
       { $limit: 10 },
@@ -91,6 +86,40 @@ exports.thread_get = async function(req, res) {
   }
 };
 
-exports.thread_put = function(req, res) {};
+exports.thread_put = async function(req, res) {
+  let { board } = req.params;
+  let { thread_id } = req.body;
 
-exports.thread_delete = function(req, res) {};
+  try {
+    let result = await Thread.updateOne({ _id: thread_id }, { reported: true });
+    console.log(result);
+
+    if (result.ok === 1) {
+      return res.type("txt").send("success");
+    } else {
+      return res.type("txt").send("thread not found");
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+exports.thread_delete = async function(req, res) {
+  let { thread_id, delete_password } = req.body;
+  let { board } = req.params;
+
+  try {
+    let result = await Thread.deleteOne({
+      _id: thread_id,
+      delete_password
+    });
+    if (result.n === 1) {
+      await Reply.deleteMany({ thread: thread_id });
+      return res.type("txt").send("success");
+    } else {
+      return res.type("txt").send("incorrect password");
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
