@@ -2,22 +2,25 @@
 
 const Thread = require("../models/thread");
 const Reply = require("../models/reply");
-const { body, validationResult } = require("express-validator/check");
-const { sanitizeBody } = require("express-validator/filter");
+var xssFilters = require("xss-filters");
 
 exports.thread_post = async function(req, res) {
   let { text, delete_password } = req.body;
   let { board } = req.params;
-  let boardView = `/b/${board}`;
+  let boardView = `/b/${board}/`;
 
-  let newThread = new Thread({ text, delete_password, board });
+  // sanitize post text
+  let newThread = new Thread({
+    text: xssFilters.inHTMLData(text),
+    delete_password,
+    board
+  });
 
   let doc = await newThread.save();
-  res.redirect(boardView);
-  console.log("thread saved:", doc);
+  res.redirect(302, boardView);
+  //console.log("thread saved:", doc);
 };
 
-//ToDo: Limit replies to top 3 by created_on
 exports.thread_get = async function(req, res) {
   let { board } = req.params;
 
@@ -31,6 +34,7 @@ exports.thread_get = async function(req, res) {
           text: 1,
           created_on: 1,
           bumped_on: 1,
+          reply_count: { $size: "$replies" },
           replies: { $slice: ["$replies", -3] }
         }
       },
@@ -51,6 +55,7 @@ exports.thread_get = async function(req, res) {
           text: { $first: "$text" },
           created_on: { $first: "$created_on" },
           bumped_on: { $first: "$bumped_on" },
+          reply_count: { $first: "$reply_count" },
           replies: {
             $push: {
               _id: "$replies._id",
@@ -66,6 +71,7 @@ exports.thread_get = async function(req, res) {
           text: true,
           created_on: true,
           bumped_on: true,
+          reply_count: true,
           replies: {
             $cond: {
               if: { $eq: ["$replies", [{}]] },
@@ -76,8 +82,6 @@ exports.thread_get = async function(req, res) {
         }
       }
     ]);
-
-    //console.log(result);
 
     res.json(result);
   } catch (err) {
@@ -92,9 +96,9 @@ exports.thread_put = async function(req, res) {
 
   try {
     let result = await Thread.updateOne({ _id: thread_id }, { reported: true });
-    console.log(result);
+    //console.log(result);
 
-    if (result.ok === 1) {
+    if (result.nModified === 1) {
       return res.type("txt").send("success");
     } else {
       return res.type("txt").send("thread not found");

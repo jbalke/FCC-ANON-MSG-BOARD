@@ -2,7 +2,7 @@
 
 const Reply = require("../models/reply");
 const Thread = require("../models/thread");
-
+var xssFilters = require("xss-filters");
 exports.reply_get = async function(req, res) {
   let { thread_id } = req.query;
   let { board } = req.params;
@@ -28,19 +28,27 @@ exports.reply_get = async function(req, res) {
 exports.reply_post = async function(req, res) {
   let { text, delete_password, thread_id } = req.body;
   let { board } = req.params;
+  let boardView = `/b/${board}/`;
 
-  let reply = new Reply({ text, delete_password, thread: thread_id });
+  let reply = new Reply({
+    text: xssFilters.inHTMLData(text),
+    delete_password,
+    thread: thread_id
+  });
   try {
     let doc = await reply.save();
     await Thread.updateOne(
       { _id: thread_id },
-      { bumped_on: new Date(), $push: { replies: doc._id } }
+      {
+        bumped_on: new Date(),
+        $push: { replies: doc._id }
+      }
     );
   } catch (err) {
     console.log(err);
   }
 
-  res.redirect(`/b/${board}`);
+  res.redirect(302, boardView);
 };
 
 exports.reply_put = async function(req, res) {
@@ -49,7 +57,7 @@ exports.reply_put = async function(req, res) {
 
   try {
     let result = await Reply.updateOne({ _id: reply_id }, { reported: true });
-    if (result.ok === 1) {
+    if (result.nModified === 1) {
       return res.type("txt").send("success");
     }
   } catch (err) {
